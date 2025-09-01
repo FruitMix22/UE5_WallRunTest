@@ -162,7 +162,7 @@ void AWallRunTestCharacter::OnWallCapsuleBeginOverlap(
 		50.f,
 		FColor::Green,
 		false,
-		2.f,
+		5.f,
 		0,
 		2.f
 	);
