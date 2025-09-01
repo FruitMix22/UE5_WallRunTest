@@ -31,6 +31,23 @@ class AWallRunTestCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FirstPersonCameraComponent;
 
+	/** Character movement */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category ="Components", meta = (AllowPrivateAccess = "true"))
+	UCharacterMovementComponent* CharacterMovementComponent;
+
+	/** Collider for wall detection */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
+	UCapsuleComponent* WallDetectionCapsule;
+
+	/** Tag for walls that can be wallrun on */ 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
+	FName wallRunTag;
+
+	/** Boolean for if actor is wallrunning */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
+	bool isWallRunning;
+
+
 protected:
 
 	/** Jump Input Action */
@@ -76,11 +93,18 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
 
+	// Overlap function
+	UFUNCTION()
+	void OnWallCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
 protected:
 
 	/** Set up input action bindings */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
-	
+
+	/** Called when the game starts or when spawned */
+	virtual void BeginPlay() override;
 
 public:
 

@@ -12,6 +12,12 @@
 
 AWallRunTestCharacter::AWallRunTestCharacter()
 {
+	// Set the tag for walls that the actor can wallrun on
+	wallRunTag = "Can_Wallrun_On";
+
+	// Set default state for wallrunning to false
+	isWallRunning = false;
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 	
@@ -40,8 +46,10 @@ AWallRunTestCharacter::AWallRunTestCharacter()
 	GetCapsuleComponent()->SetCapsuleSize(34.0f, 96.0f);
 
 	// Configure character movement
-	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
-	GetCharacterMovement()->AirControl = 0.5f;
+	CharacterMovementComponent = GetCharacterMovement();
+	CharacterMovementComponent->BrakingDecelerationFalling = 1500.0f;
+	CharacterMovementComponent->AirControl = 0.5f;
+
 }
 
 void AWallRunTestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -65,7 +73,6 @@ void AWallRunTestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 		UE_LOG(LogWallRunTest, Error, TEXT("'%s' Failed to find an Enhanced Input Component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
 	}
 }
-
 
 void AWallRunTestCharacter::MoveInput(const FInputActionValue& Value)
 {
@@ -117,4 +124,38 @@ void AWallRunTestCharacter::DoJumpEnd()
 {
 	// pass StopJumping to the character
 	StopJumping();
+}
+
+void AWallRunTestCharacter::OnWallCapsuleBeginOverlap(
+	UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	if (!OtherActor || OtherActor == this) return;
+
+	if (!OtherActor->ActorHasTag(wallRunTag)) return;
+
+	if (!CharacterMovementComponent->IsFalling()) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Wall detection capsule overlapped with: %s"), *OtherActor->GetName());
+	
+	// Start wallrunning
+	isWallRunning = true;
+}
+
+void AWallRunTestCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Find the capsule from the Blueprint hierarchy
+	WallDetectionCapsule = Cast<UCapsuleComponent>(GetDefaultSubobjectByName(TEXT("DetectWallCollider")));
+
+	if (WallDetectionCapsule)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("WallDetectionCapsule found! Binding overlap."));
+		WallDetectionCapsule->OnComponentBeginOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleBeginOverlap);
+	}
 }
