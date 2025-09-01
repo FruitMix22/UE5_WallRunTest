@@ -142,6 +142,35 @@ void AWallRunTestCharacter::OnWallCapsuleBeginOverlap(
 
 	UE_LOG(LogTemp, Warning, TEXT("Wall detection capsule overlapped with: %s"), *OtherActor->GetName());
 	
+	if (IsForwardVectorSameWithCamera(OtherActor))
+	{
+		// > 0
+		wallRunningDirection = OtherActor->GetActorForwardVector() * 1;
+	}
+	else
+	{
+		// < 0
+		wallRunningDirection = OtherActor->GetActorForwardVector() * -1;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Wall Running direction is: %s"), *wallRunningDirection.ToString());
+
+	DrawDebugDirectionalArrow(
+		GetWorld(),
+		GetActorLocation(),
+		GetActorLocation() + wallRunningDirection * 300.f,
+		50.f,
+		FColor::Green,
+		false,
+		2.f,
+		0,
+		2.f
+	);
+
+
+
+	
+
 	// Start wallrunning
 	isWallRunning = true;
 }
@@ -158,4 +187,13 @@ void AWallRunTestCharacter::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("WallDetectionCapsule found! Binding overlap."));
 		WallDetectionCapsule->OnComponentBeginOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleBeginOverlap);
 	}
+}
+
+bool AWallRunTestCharacter::IsForwardVectorSameWithCamera(AActor* OtherActor)
+{
+	FVector otherForwardVector = OtherActor->GetActorForwardVector();
+	FVector cameraForwardVector = FirstPersonCameraComponent->GetForwardVector();
+
+	if (FVector::DotProduct(otherForwardVector, cameraForwardVector) > 0) return true;
+	else return false;
 }

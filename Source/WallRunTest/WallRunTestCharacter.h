@@ -47,6 +47,9 @@ class AWallRunTestCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
 	bool isWallRunning;
 
+	/** Vector for wallrunning direction */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
+	FVector wallRunningDirection;
 
 protected:
 
@@ -105,6 +108,9 @@ protected:
 
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
+
+	UFUNCTION()
+	virtual bool IsForwardVectorSameWithCamera(AActor* OtherActor);
 
 public:
 
