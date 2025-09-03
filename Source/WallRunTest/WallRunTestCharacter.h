@@ -51,6 +51,9 @@ class AWallRunTestCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
 	FVector wallRunningDirection;
 
+	/** Default gravity scale */
+	float defaultGravityScale;
+
 protected:
 
 	/** Jump Input Action */
@@ -101,6 +104,13 @@ protected:
 	void OnWallCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
+	// End overlap function
+	UFUNCTION()
+	void OnWallCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex);
+
 protected:
 
 	/** Set up input action bindings */
@@ -109,8 +119,17 @@ protected:
 	/** Called when the game starts or when spawned */
 	virtual void BeginPlay() override;
 
+	/** Tick override */
+	virtual void Tick(float DeltaTime) override;
+
 	UFUNCTION()
-	virtual bool IsForwardVectorSameWithCamera(AActor* OtherActor);
+	virtual double DotProductWithCamera(AActor* OtherActor);
+
+	UFUNCTION()
+	virtual void  StartWallRun();
+
+	UFUNCTION()
+	virtual void  EndWallRun();
 
 public:
 
