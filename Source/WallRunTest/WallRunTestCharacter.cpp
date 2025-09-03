@@ -173,7 +173,7 @@ void AWallRunTestCharacter::OnWallCapsuleBeginOverlap(
 	);
 
 	// Start wallrunning
-	StartWallRun();
+	StartWallRun(DotProductWithCamera(OtherActor));
 }
 
 void AWallRunTestCharacter::OnWallCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp,
@@ -217,14 +217,30 @@ double AWallRunTestCharacter::DotProductWithCamera(AActor* OtherActor)
 	return FVector::DotProduct(otherForwardVector, cameraForwardVector);
 }
 
-void AWallRunTestCharacter::StartWallRun()
+void AWallRunTestCharacter::StartWallRun(float wallRunDir)
 {
 	isWallRunning = true;
 	CharacterMovementComponent->GravityScale = 0.0f;
+	if (wallRunDir > 0)
+	{
+		FRotator ControlRot = Controller->GetControlRotation();
+		ControlRot.Roll = 20.f;
+		Controller->SetControlRotation(ControlRot);
+	}
+	else
+	{
+		FRotator ControlRot = Controller->GetControlRotation();
+		ControlRot.Roll = -20.f;
+		Controller->SetControlRotation(ControlRot);
+	}
+
 }
 
 void AWallRunTestCharacter::EndWallRun()
 {
 	isWallRunning = false;
 	CharacterMovementComponent->GravityScale = defaultGravityScale;
+	FRotator ControlRot = Controller->GetControlRotation();
+	ControlRot.Roll = 0.f;
+	Controller->SetControlRotation(ControlRot);
 }

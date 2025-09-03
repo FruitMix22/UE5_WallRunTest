@@ -126,7 +126,7 @@ protected:
 	virtual double DotProductWithCamera(AActor* OtherActor);
 
 	UFUNCTION()
-	virtual void  StartWallRun();
+	virtual void  StartWallRun(float wallRunDir);
 
 	UFUNCTION()
 	virtual void  EndWallRun();
