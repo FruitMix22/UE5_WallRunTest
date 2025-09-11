@@ -233,12 +233,14 @@ void AWallRunTestCharacter::StartWallRun(float wallRunDir)
 		ControlRot.Roll = -20.f;
 		Controller->SetControlRotation(ControlRot);
 	}
+	CharacterMovementComponent->AirControl = 0.0f;
 
 }
 
 void AWallRunTestCharacter::EndWallRun()
 {
 	isWallRunning = false;
+	CharacterMovementComponent->AirControl = 0.0f;
 	CharacterMovementComponent->GravityScale = defaultGravityScale;
 	FRotator ControlRot = Controller->GetControlRotation();
 	ControlRot.Roll = 0.f;
