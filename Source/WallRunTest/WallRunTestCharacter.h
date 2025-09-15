@@ -71,6 +71,9 @@ protected:
 	/** Mouse Look Input Action */
 	UPROPERTY(EditAnywhere, Category ="Input")
 	class UInputAction* MouseLookAction;
+
+	void PerformWallJump();
+
 	
 public:
 	AWallRunTestCharacter();

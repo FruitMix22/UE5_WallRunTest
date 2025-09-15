@@ -12,7 +12,7 @@
 
 AWallRunTestCharacter::AWallRunTestCharacter()
 {
-
+	 
 
 	// Set the tag for walls that the actor can wallrun on
 	wallRunTag = "Can_Wallrun_On";
@@ -120,8 +120,14 @@ void AWallRunTestCharacter::DoMove(float Right, float Forward)
 
 void AWallRunTestCharacter::DoJumpStart()
 {
-	// pass Jump to the character
-	Jump();
+	if (isWallRunning)
+	{
+		PerformWallJump();
+	}
+	else
+	{
+		Jump();
+	}
 }
 
 void AWallRunTestCharacter::DoJumpEnd()
@@ -201,7 +207,10 @@ void AWallRunTestCharacter::BeginPlay()
 
 void AWallRunTestCharacter::Tick(float DeltaTime)
 {
+	UE_LOG(LogTemp, Warning, TEXT("Speed is : %f"), GetCharacterMovement()->Velocity.Size());
+	
 	Super::Tick(DeltaTime);
+
 
 	if (isWallRunning)
 	{
@@ -219,8 +228,11 @@ double AWallRunTestCharacter::DotProductWithCamera(AActor* OtherActor)
 
 void AWallRunTestCharacter::StartWallRun(float wallRunDir)
 {
+	
+
 	isWallRunning = true;
 	CharacterMovementComponent->GravityScale = 0.0f;
+	CharacterMovementComponent->AirControl = 0.0f;
 	if (wallRunDir > 0)
 	{
 		FRotator ControlRot = Controller->GetControlRotation();
@@ -233,16 +245,31 @@ void AWallRunTestCharacter::StartWallRun(float wallRunDir)
 		ControlRot.Roll = -20.f;
 		Controller->SetControlRotation(ControlRot);
 	}
-	CharacterMovementComponent->AirControl = 0.0f;
-
 }
 
 void AWallRunTestCharacter::EndWallRun()
 {
 	isWallRunning = false;
-	CharacterMovementComponent->AirControl = 0.0f;
+	CharacterMovementComponent->AirControl = 0.5f;
 	CharacterMovementComponent->GravityScale = defaultGravityScale;
 	FRotator ControlRot = Controller->GetControlRotation();
 	ControlRot.Roll = 0.f;
 	Controller->SetControlRotation(ControlRot);
+}
+
+void AWallRunTestCharacter::PerformWallJump()
+{
+	//TODO: Remove magic numbers from jump calc
+
+
+	// Jump direction is upwards and direction youre facing
+	FVector jumpDirection = FVector::UpVector * 200.0f + (GetActorForwardVector() * 600.0f);
+
+	// Normalise so we can edit strength
+	jumpDirection = jumpDirection.GetSafeNormal();
+
+	// Launch the character
+	LaunchCharacter(jumpDirection * 1300.0f, true, true);
+
+	EndWallRun();
 }
