@@ -56,6 +56,43 @@ AWallRunTestCharacter::AWallRunTestCharacter()
 
 }
 
+/**************************/
+/****  Inherited funcs ****/
+/**************************/
+void AWallRunTestCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Find the capsule from the Blueprint hierarchy
+	WallDetectionCapsuleLeft = Cast<UCapsuleComponent>(GetDefaultSubobjectByName(TEXT("DetectWallColliderLeft")));
+	WallDetectionCapsuleRight = Cast<UCapsuleComponent>(GetDefaultSubobjectByName(TEXT("DetectWallColliderRight")));
+
+	if (WallDetectionCapsuleLeft)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("WallDetectionCapsuleLeft found! Binding overlap."));
+		WallDetectionCapsuleLeft->OnComponentBeginOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleLeftBeginOverlap);
+		WallDetectionCapsuleLeft->OnComponentEndOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleEndOverlap);
+	}
+	if (WallDetectionCapsuleRight)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("WallDetectionCapsuleRight found! Binding overlap."));
+		WallDetectionCapsuleRight->OnComponentBeginOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleRightBeginOverlap);
+		WallDetectionCapsuleRight->OnComponentEndOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleEndOverlap);
+	}
+}
+
+void AWallRunTestCharacter::Tick(float DeltaTime)
+{
+	
+	Super::Tick(DeltaTime);
+
+
+	if (isWallRunning)
+	{
+		CharacterMovementComponent->Velocity = wallRunningDirection * 1000;
+	}
+}
+
 void AWallRunTestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {	
 	// Set up action bindings
@@ -78,6 +115,9 @@ void AWallRunTestCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	}
 }
 
+/**************************/
+/****  Input actions   ****/
+/**************************/
 void AWallRunTestCharacter::MoveInput(const FInputActionValue& Value)
 {
 	// get the Vector2D move axis
@@ -136,7 +176,10 @@ void AWallRunTestCharacter::DoJumpEnd()
 	StopJumping();
 }
 
-void AWallRunTestCharacter::OnWallCapsuleBeginOverlap(
+/**************************/
+/*** WallRunning funcs  ***/
+/**************************/
+void AWallRunTestCharacter::OnWallCapsuleLeftBeginOverlap(
 	UPrimitiveComponent* OverlappedComp,
 	AActor* OtherActor,
 	UPrimitiveComponent* OtherComp,
@@ -144,26 +187,75 @@ void AWallRunTestCharacter::OnWallCapsuleBeginOverlap(
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 {
-	if (!OtherActor || OtherActor == this) return;
+	if (CanWallRun(OtherActor)) StartWallRun(DotProductWithCamera(OtherActor->GetActorForwardVector()), 20.f);
+}
 
-	if (!OtherActor->ActorHasTag(wallRunTag)) return;
+void AWallRunTestCharacter::OnWallCapsuleRightBeginOverlap(
+	UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	if (CanWallRun(OtherActor)) StartWallRun(DotProductWithCamera(OtherActor->GetActorForwardVector()), -20.f);
+}
 
-	if (!CharacterMovementComponent->IsFalling()) return;
-	
+void AWallRunTestCharacter::OnWallCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	EndWallRun();
+}
 
-	// First, check if vectors are facing each other
-	// If the wall normal and camera face eachover, the value will be 1!
-	if (DotProductWithCamera(OtherActor) > 0)
+double AWallRunTestCharacter::DotProductWithCamera(FVector otherVector)
+{
+	FVector cameraForwardVector = FirstPersonCameraComponent->GetForwardVector();
+
+	return FVector::DotProduct(otherVector, cameraForwardVector);
+}
+
+bool AWallRunTestCharacter::CanWallRun(AActor* Wall)
+{
+	if (!Wall || Wall == this) return false;
+
+	if (!Wall->ActorHasTag(wallRunTag)) return false;
+
+	if (!CharacterMovementComponent->IsFalling()) return false;
+
+
+	// Firstly, check if player is running towards the wall or backing up into it
+	FVector camForward = FirstPersonCameraComponent->GetForwardVector();
+	FVector velocity = GetCharacterMovement()->Velocity;
+	float moveDot = FVector::DotProduct(velocity.GetSafeNormal(), camForward);
+
+	// Dont allow wallrunning if backing up into it or too slow
+	if (moveDot <= 0.1f || velocity.Size() <= 200.f)
 	{
-		wallRunningDirection = OtherActor->GetActorForwardVector() * 1;
-		UE_LOG(LogTemp, Warning, TEXT("Facing the wall with dot product of:  %f."), DotProductWithCamera(OtherActor));
-	}
-	else if (DotProductWithCamera(OtherActor) < 0)
-	{
-		wallRunningDirection = OtherActor->GetActorForwardVector() * -1;
-		UE_LOG(LogTemp, Warning, TEXT("Facing the wall with dot product of:  %f."), DotProductWithCamera(OtherActor));
+		UE_LOG(LogTemp, Warning, TEXT("Cannot wall run: moving backwards or too slow."));
+		return false;
 	}
 
+	// Second, check if vectors are facing each other
+	// If the wall forward vec and camera forward vec face eachover, the value will be 1!
+	if (DotProductWithCamera(Wall->GetActorForwardVector()) > 0.65)
+	{
+		wallRunningDirection = Wall->GetActorForwardVector() * 1;
+		UE_LOG(LogTemp, Warning, TEXT("Facing the wall with dot product of:  %f."), DotProductWithCamera(Wall->GetActorForwardVector()));
+		return true;
+	}
+	else if (DotProductWithCamera(Wall->GetActorForwardVector()) < -0.65)
+	{
+		wallRunningDirection = Wall->GetActorForwardVector() * -1;
+		UE_LOG(LogTemp, Warning, TEXT("Facing the wall with dot product of:  %f."), DotProductWithCamera(Wall->GetActorForwardVector()));
+		return true;
+	}
+	return false;
+}
+
+void AWallRunTestCharacter::StartWallRun(float wallRunDir, float cameraRotation)
+{
 
 
 	DrawDebugDirectionalArrow(
@@ -175,76 +267,15 @@ void AWallRunTestCharacter::OnWallCapsuleBeginOverlap(
 		false,
 		5.f,
 		0,
-		2.f
-	);
-
-	// Start wallrunning
-	StartWallRun(DotProductWithCamera(OtherActor));
-}
-
-void AWallRunTestCharacter::OnWallCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex)
-{
-	EndWallRun();
-}
-
-void AWallRunTestCharacter::BeginPlay()
-{
-	Super::BeginPlay();
-
-	// Find the capsule from the Blueprint hierarchy
-	WallDetectionCapsule = Cast<UCapsuleComponent>(GetDefaultSubobjectByName(TEXT("DetectWallCollider")));
-
-	if (WallDetectionCapsule)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("WallDetectionCapsule found! Binding overlap."));
-		WallDetectionCapsule->OnComponentBeginOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleBeginOverlap);
-		WallDetectionCapsule->OnComponentEndOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleEndOverlap);
-	}
-}
-
-void AWallRunTestCharacter::Tick(float DeltaTime)
-{
-	UE_LOG(LogTemp, Warning, TEXT("Speed is : %f"), GetCharacterMovement()->Velocity.Size());
-	
-	Super::Tick(DeltaTime);
-
-
-	if (isWallRunning)
-	{
-		CharacterMovementComponent->Velocity = wallRunningDirection * 1000;
-	}
-}
-
-double AWallRunTestCharacter::DotProductWithCamera(AActor* OtherActor)
-{
-	FVector otherForwardVector = OtherActor->GetActorForwardVector();
-	FVector cameraForwardVector = FirstPersonCameraComponent->GetForwardVector();
-
-	return FVector::DotProduct(otherForwardVector, cameraForwardVector);
-}
-
-void AWallRunTestCharacter::StartWallRun(float wallRunDir)
-{
-	
+		2.f);
 
 	isWallRunning = true;
 	CharacterMovementComponent->GravityScale = 0.0f;
 	CharacterMovementComponent->AirControl = 0.0f;
-	if (wallRunDir > 0)
-	{
-		FRotator ControlRot = Controller->GetControlRotation();
-		ControlRot.Roll = 20.f;
-		Controller->SetControlRotation(ControlRot);
-	}
-	else
-	{
-		FRotator ControlRot = Controller->GetControlRotation();
-		ControlRot.Roll = -20.f;
-		Controller->SetControlRotation(ControlRot);
-	}
+
+	FRotator ControlRot = Controller->GetControlRotation();
+	ControlRot.Roll = cameraRotation;
+	Controller->SetControlRotation(ControlRot);
 }
 
 void AWallRunTestCharacter::EndWallRun()

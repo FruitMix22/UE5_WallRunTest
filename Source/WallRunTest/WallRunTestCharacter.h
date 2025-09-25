@@ -37,7 +37,11 @@ class AWallRunTestCharacter : public ACharacter
 
 	/** Collider for wall detection */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
-	UCapsuleComponent* WallDetectionCapsule;
+	UCapsuleComponent* WallDetectionCapsuleLeft;
+
+	/** Collider for wall detection */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
+	UCapsuleComponent* WallDetectionCapsuleRight;
 
 	/** Tag for walls that can be wallrun on */ 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
@@ -104,7 +108,10 @@ protected:
 
 	// Overlap function
 	UFUNCTION()
-	void OnWallCapsuleBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	void OnWallCapsuleLeftBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void OnWallCapsuleRightBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	// End overlap function
@@ -113,6 +120,11 @@ protected:
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
+
+
+	// Check to see if wallrun can be initiated
+	UFUNCTION()
+	bool CanWallRun(AActor* Wall);
 
 protected:
 
@@ -126,10 +138,10 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION()
-	virtual double DotProductWithCamera(AActor* OtherActor);
+	virtual double DotProductWithCamera(FVector otherVector);
 
 	UFUNCTION()
-	virtual void  StartWallRun(float wallRunDir);
+	virtual void  StartWallRun(float wallRunDir, float cameraRotation);
 
 	UFUNCTION()
 	virtual void  EndWallRun();
