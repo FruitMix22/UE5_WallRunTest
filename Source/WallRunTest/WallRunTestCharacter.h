@@ -58,6 +58,9 @@ class AWallRunTestCharacter : public ACharacter
 	/** Default gravity scale */
 	float defaultGravityScale;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "WallRunning", meta = (AllowPrivateAccess = "true"))
+	float wallJumpForce = 1300.f;
+
 protected:
 
 	/** Jump Input Action */

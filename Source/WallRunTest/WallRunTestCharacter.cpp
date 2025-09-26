@@ -256,19 +256,6 @@ bool AWallRunTestCharacter::CanWallRun(AActor* Wall)
 
 void AWallRunTestCharacter::StartWallRun(float wallRunDir, float cameraRotation)
 {
-
-
-	DrawDebugDirectionalArrow(
-		GetWorld(),
-		GetActorLocation(),
-		GetActorLocation() + wallRunningDirection * 300.f,
-		50.f,
-		FColor::Green,
-		false,
-		5.f,
-		0,
-		2.f);
-
 	isWallRunning = true;
 	CharacterMovementComponent->GravityScale = 0.0f;
 	CharacterMovementComponent->AirControl = 0.0f;
@@ -291,8 +278,7 @@ void AWallRunTestCharacter::EndWallRun()
 void AWallRunTestCharacter::PerformWallJump()
 {
 	//TODO: Remove magic numbers from jump calc
-
-
+	// 
 	// Jump direction is upwards and direction youre facing
 	FVector jumpDirection = FVector::UpVector * 200.0f + (GetActorForwardVector() * 600.0f);
 
@@ -300,7 +286,7 @@ void AWallRunTestCharacter::PerformWallJump()
 	jumpDirection = jumpDirection.GetSafeNormal();
 
 	// Launch the character
-	LaunchCharacter(jumpDirection * 1300.0f, true, true);
+	LaunchCharacter(jumpDirection * wallJumpForce, true, true);
 
 	EndWallRun();
 }
