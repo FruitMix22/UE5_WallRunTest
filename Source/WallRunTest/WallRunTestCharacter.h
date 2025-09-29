@@ -109,6 +109,14 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoJumpEnd();
 
+
+	void GetLineTraceVector(bool right);
+
+	float initialWallRunDistance;
+
+	// Side the player that the wall is
+	FVector lineTraceDir;
+
 	// Overlap function
 	UFUNCTION()
 	void OnWallCapsuleLeftBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

@@ -71,13 +71,13 @@ void AWallRunTestCharacter::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("WallDetectionCapsuleLeft found! Binding overlap."));
 		WallDetectionCapsuleLeft->OnComponentBeginOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleLeftBeginOverlap);
-		WallDetectionCapsuleLeft->OnComponentEndOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleEndOverlap);
+		//WallDetectionCapsuleLeft->OnComponentEndOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleEndOverlap);
 	}
 	if (WallDetectionCapsuleRight)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("WallDetectionCapsuleRight found! Binding overlap."));
 		WallDetectionCapsuleRight->OnComponentBeginOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleRightBeginOverlap);
-		WallDetectionCapsuleRight->OnComponentEndOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleEndOverlap);
+		//WallDetectionCapsuleRight->OnComponentEndOverlap.AddDynamic(this, &AWallRunTestCharacter::OnWallCapsuleEndOverlap);
 	}
 }
 
@@ -89,7 +89,38 @@ void AWallRunTestCharacter::Tick(float DeltaTime)
 
 	if (isWallRunning)
 	{
+		// TODO: Remove magic number for wallrunning speed
 		CharacterMovementComponent->Velocity = wallRunningDirection * 1000;
+
+		// Check if wall is near!
+		FVector playerWorldPos = GetActorLocation();
+
+		FVector start = playerWorldPos;
+		// TODO: Remove magic number for max line trace distance
+		FVector end = start + (lineTraceDir * 200.f);
+
+		FHitResult hit;
+		FCollisionQueryParams params;
+		params.AddIgnoredActor(this); // ignore the player
+
+		bool bHit = GetWorld()->LineTraceSingleByChannel(hit, start, end, ECC_GameTraceChannel2, params);
+
+		if (bHit)
+		{
+			AActor* HitActor = hit.GetActor();
+			if (!HitActor || !HitActor->ActorHasTag(wallRunTag))
+			{
+				// Not a valid wallrun wall
+				EndWallRun();
+				return;
+			}
+			// TODO: Remove magic number for distance away from wall buffer
+			if(hit.Distance > initialWallRunDistance + 10.f)
+			{
+				// Wall is too far away, end wallrun
+				EndWallRun();
+			}
+		}
 	}
 }
 
@@ -179,6 +210,8 @@ void AWallRunTestCharacter::DoJumpEnd()
 /**************************/
 /*** WallRunning funcs  ***/
 /**************************/
+
+// Left
 void AWallRunTestCharacter::OnWallCapsuleLeftBeginOverlap(
 	UPrimitiveComponent* OverlappedComp,
 	AActor* OtherActor,
@@ -187,9 +220,17 @@ void AWallRunTestCharacter::OnWallCapsuleLeftBeginOverlap(
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 {
-	if (CanWallRun(OtherActor)) StartWallRun(DotProductWithCamera(OtherActor->GetActorForwardVector()), 20.f);
+	if (!isWallRunning)
+	{
+		if (CanWallRun(OtherActor))
+		{
+			GetLineTraceVector(false);
+			StartWallRun(DotProductWithCamera(OtherActor->GetActorForwardVector()), 20.f);
+		}
+	}
 }
 
+// Right
 void AWallRunTestCharacter::OnWallCapsuleRightBeginOverlap(
 	UPrimitiveComponent* OverlappedComp,
 	AActor* OtherActor,
@@ -198,7 +239,14 @@ void AWallRunTestCharacter::OnWallCapsuleRightBeginOverlap(
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 {
-	if (CanWallRun(OtherActor)) StartWallRun(DotProductWithCamera(OtherActor->GetActorForwardVector()), -20.f);
+	if (!isWallRunning)
+	{
+		if (CanWallRun(OtherActor))
+		{
+			GetLineTraceVector(true);
+			StartWallRun(DotProductWithCamera(OtherActor->GetActorForwardVector()), -20.f);
+		}
+	}
 }
 
 void AWallRunTestCharacter::OnWallCapsuleEndOverlap(UPrimitiveComponent* OverlappedComp,
@@ -209,13 +257,38 @@ void AWallRunTestCharacter::OnWallCapsuleEndOverlap(UPrimitiveComponent* Overlap
 	EndWallRun();
 }
 
+void AWallRunTestCharacter::GetLineTraceVector(bool right)
+{
+	FVector playerWorldPos = GetActorLocation();
+	if (right) lineTraceDir = GetActorRightVector();
+	else lineTraceDir = -GetActorRightVector();
+
+	FVector start = playerWorldPos;
+	// TODO: Remove magic number for max line trace distance
+	FVector end = start + (lineTraceDir * 200.f);
+
+	FHitResult hit;
+	FCollisionQueryParams params;
+	params.AddIgnoredActor(this); // ignore the player
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(hit, start, end, ECC_GameTraceChannel2, params);
+
+	if (bHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Line trace hit: %s"), *hit.GetActor()->GetName());
+		initialWallRunDistance = hit.Distance;
+		UE_LOG(LogTemp, Warning, TEXT("Line trace hit with distance: %f"), initialWallRunDistance);
+	}
+
+}
+
 double AWallRunTestCharacter::DotProductWithCamera(FVector otherVector)
 {
 	FVector cameraForwardVector = FirstPersonCameraComponent->GetForwardVector();
 
 	return FVector::DotProduct(otherVector, cameraForwardVector);
 }
-
+ 
 bool AWallRunTestCharacter::CanWallRun(AActor* Wall)
 {
 	if (!Wall || Wall == this) return false;
